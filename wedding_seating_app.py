@@ -222,7 +222,7 @@ if guest_df.empty:
 
 # 4.1. Primary search input (Name or Relationship)
 search_selection = st.selectbox(
-    "*Start typing your name or relationship to find your seat:*",
+    "*Start typing your name or relationship to Bride/Groom:*",
     options=[''] + all_search_terms, # Add an empty string for the initial prompt
     index=0,
     placeholder="e.g., Bride's Aunt, Groom's Family, Uncle, Friend"
