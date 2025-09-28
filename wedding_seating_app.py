@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from PIL import Image, ImageDraw
 import os
+import base64
+from io import BytesIO
 
 # --- 1. CONFIGURATION: TABLE COORDINATES ---
 # CRITICAL: These are MOCK PIXEL COORDINATES based on a large sample image.
@@ -68,26 +70,35 @@ def load_map_image(file_path):
 def get_search_terms(df):
     """Creates a unique, sorted list of all possible search terms for autocomplete."""
     # Ensure columns exist before trying to access them
-    # Collect all unique Placard Names (these are the primary search targets)
     names = df['Placard Name'].dropna().astype(str).str.strip().tolist()
-    
-    # Collect all unique Relationships (as secondary search targets)
     relationships = df.get('Relationship to Couple', pd.Series()).dropna().astype(str).str.strip().tolist() 
     
     # Combine, remove duplicates, and sort alphabetically
     all_terms = list(set([t for t in names + relationships if t]))
     return sorted(all_terms, key=str.lower)
 
+def get_image_as_base64(image_obj):
+    """Converts a PIL Image object to a base64 string for embedding in HTML."""
+    if image_obj is None:
+        return None
+    
+    # Save the PIL Image to a bytes buffer
+    buffered = BytesIO()
+    image_obj.save(buffered, format="PNG")
+    
+    # Encode the bytes to base64
+    return base64.b64encode(buffered.getvalue()).decode()
+
 
 # Load Data and Search Terms
-DATA_FILE = "./data/map_seating_plan.xlsx" # Updated to new directory
-SHEET_NAME = "NameList" # Specify the sheet name
-MAP_FILE = "./data/floor_plan.png" # Updated to new directory
+DATA_FILE = "./data/map_seating_plan.xlsx"
+SHEET_NAME = "NameList"
+MAP_FILE = "./data/floor_plan.png"
 
 # Call load_data and load_map_image
 guest_df = load_data(DATA_FILE, SHEET_NAME)
 all_search_terms = get_search_terms(guest_df)
-base_map = load_map_image(MAP_FILE) # This now calls the function defined above
+base_map = load_map_image(MAP_FILE)
 
 # --- 3. UI SETUP ---
 
@@ -112,6 +123,21 @@ st.markdown(
         font-size: 1.2em;
         margin-bottom: 20px;
         color: #000000; /* Set text color to black for high contrast */
+    }
+    /* New CSS to enable scrolling for large content */
+    .scrollable-map {
+        overflow-x: auto; /* Enable horizontal scrolling */
+        overflow-y: auto; /* Enable vertical scrolling */
+        max-width: 100%; /* Limit container width to the column width */
+        border: 1px solid #ddd; /* Optional: Add border for visual cue */
+        border-radius: 8px;
+    }
+    /* Ensure the image inside the scrollable container does not shrink unnecessarily */
+    .scrollable-map img {
+        min-width: 100%; /* Ensure it takes full width if container allows */
+        max-width: none; /* Allow image to exceed container size */
+        height: auto;
+        display: block;
     }
     </style>
     """,
@@ -161,7 +187,6 @@ if final_search_query:
         st.info(f"We found **{len(initial_matches)}** guests matching **'{final_search_query}'**. Please select your specific placard name:")
         
         # Create a unique identifier string that matches the selectbox option format
-        # This is CRITICAL for correctly identifying guests with duplicate placard names.
         initial_matches['UniqueSelection'] = initial_matches.apply(
             lambda row: f"{row['Placard Name']} ({row['Relationship to Couple']})" if 'Relationship to Couple' in row else row['Placard Name'], axis=1
         )
@@ -181,7 +206,6 @@ if final_search_query:
         
         if individual_selection:
             # Filter using the ENTIRE selected string (UniqueSelection), which guarantees uniqueness
-            # This directly solves the issue of duplicate placard names in a group.
             final_match = initial_matches[initial_matches['UniqueSelection'] == individual_selection].copy()
             
             # Clean up the temporary column after use
@@ -217,15 +241,15 @@ if not final_match.empty:
         unsafe_allow_html=True
     )
 
-    # 5.3. Display Map with Marker
+    # 5.3. Display Map with Marker (Scrollable version)
     if base_map and found_table in TABLE_COORDS:
-        st.markdown("### Location on Map:")
+        st.markdown("### Location on Map (Scroll to View All):")
 
-        # Create a copy of the base map to draw on
+        # 1. Create a copy of the base map to draw on
         drawn_map = base_map.copy()
         draw = ImageDraw.Draw(drawn_map)
 
-        # Get coordinates and draw the circle
+        # 2. Get coordinates and draw the circle
         x, y = TABLE_COORDS[found_table]
 
         # Draw a thick red circle marker
@@ -235,20 +259,43 @@ if not final_match.empty:
             width=10
         )
 
-        # Display the marked image
-        st.image(drawn_map, caption="Your Table Location (Marked in Red)", use_container_width=True)
+        # 3. Convert the marked image to base64
+        base64_image_data = get_image_as_base64(drawn_map)
+        
+        # 4. Use markdown to embed the image in a scrollable div
+        if base64_image_data:
+            st.markdown(f"""
+            <div class="scrollable-map">
+                <img src="data:image/png;base64,{base64_image_data}" alt="Seating Map with Table Marked">
+            </div>
+            """, unsafe_allow_html=True)
 
     elif base_map:
         st.warning(f"Your table, '{found_table}', was found, but its location is missing from the map configuration (`TABLE_COORDS`).")
-        # Display the original map
-        st.image(base_map, caption="Full Seating Map (Table Not Marked)", use_container_width=True)
+        # Display the original map using the scrollable markdown method
+        base64_image_data = get_image_as_base64(base_map)
+        if base64_image_data:
+             st.markdown(f"""
+            <div class="scrollable-map">
+                <img src="data:image/png;base64,{base64_image_data}" alt="Full Seating Map">
+            </div>
+            """, unsafe_allow_html=True)
 
+
+    # --- 5.4. Handle Final Error ---
+    # (Error handled implicitly when final_match is empty)
 # 5.4. Handle Final Error
 elif final_search_query and final_match.empty and len(initial_matches) == 0:
     st.error("Guest name or relationship not found. Please try entering a different name or ask an usher for assistance.")
 
 else:
-    # Display the static map if no search is active
+    # Display the static map if no search is active (Scrollable version)
     if base_map:
-        st.markdown("### Full Seating Plan")
-        st.image(base_map, caption="Please search your name above to see your table marked.", use_container_width=True)
+        st.markdown("### Full Seating Plan (Scroll to View All)")
+        base64_image_data = get_image_as_base64(base_map)
+        if base64_image_data:
+             st.markdown(f"""
+            <div class="scrollable-map">
+                <img src="data:image/png;base64,{base64_image_data}" alt="Full Seating Map">
+            </div>
+            """, unsafe_allow_html=True)
