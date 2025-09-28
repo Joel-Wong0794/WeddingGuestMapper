@@ -124,6 +124,20 @@ st.markdown(
         margin-bottom: 20px;
         color: #000000; /* Set text color to black for high contrast */
     }
+    /* Style for the embedded table */
+    .stSuccess table {
+        width: 100%;
+        margin-top: 5px;
+        border-collapse: collapse;
+    }
+    .stSuccess td {
+        padding: 4px 0;
+        vertical-align: top;
+    }
+    .stSuccess td:first-child {
+        font-weight: bold;
+        width: 30%;
+    }
     /* New CSS to enable scrolling for large content */
     .scrollable-map {
         overflow-x: auto; /* Enable horizontal scrolling */
@@ -229,11 +243,22 @@ if not final_match.empty:
     # Use 'Relationship to Couple' for the Group field
     group_name = final_match['Relationship to Couple'].iloc[0] if 'Relationship to Couple' in final_match.columns else "Relationship N/A"
 
-    # Build the structured success message content
+    # Build the structured success message content using an HTML table
     success_content = f"""
-    **Your Placard:** {found_name}<br>
-    **Table:** <span style="font-size: 1.5em; font-weight: bold; color: #38a169;">{found_table}</span><br>
-    **Group:** {group_name}
+    <table>
+        <tr>
+            <td>Your Placard</td>
+            <td>{found_name}</td>
+        </tr>
+        <tr>
+            <td>Table</td>
+            <td><span style="font-size: 1.5em; font-weight: bold; color: #38a169;">{found_table}</span></td>
+        </tr>
+        <tr>
+            <td>Group</td>
+            <td>{group_name}</td>
+        </tr>
+    </table>
     """
     # Display success message within the styled div
     st.markdown(
