@@ -5,32 +5,28 @@ import os
 import base64
 from io import BytesIO
 
-# --- 1. CONFIGURATION: TABLE COORDINATES ---
-# CRITICAL: These are MOCK PIXEL COORDINATES based on a large sample image.
-# You MUST open your 'floor_plan.png' in an image editor (like Paint or Preview)
-# and adjust the (X, Y) pixel coordinates for each table to match your actual map.
-# X is the horizontal position (from left), Y is the vertical position (from top).
+# --- 1. CONFIGURATION: TABLE COORDINATES & DIMENSIONS ---
+# CRITICAL: These are MOCK PIXEL COORDINATES based on the ORIGINAL size of your map.
+# The application will automatically scale these coordinates if the map is resized below.
 
 TABLE_COORDS = {
-    'VIP': (150, 250),
-    '1': (800, 200),
-    '2': (800, 500),
-    '3': (500, 800),
-    '4': (200, 750),
-    '5': (300, 500),
-    '6': (500, 250),
-    '7': (650, 700),
-    '8': (100, 500), # Added more mock tables based on typical size
-    '9': (150, 600),
-    '10': (250, 350),
-    '11': (400, 150),
-    '12': (700, 300),
-    '13': (750, 650),
-    '14': (450, 500),
-    '15': (350, 650),
+    'VIP': (4800, 1650),
+    '1': (5520, 1650),
+    '2': (3888, 1650),
+    '3': (3180, 1720),
+    '4': (2815, 3260),
+    '5': (2090, 3260),
+    '6': (1369, 3260),
+    '7': (630, 3260)
 }
 # Size of the circle to draw (adjust radius if needed)
 CIRCLE_RADIUS = 35
+
+# NEW: Maximum width for the map image. Image will be scaled down if it exceeds this.
+MAX_MAP_WIDTH_PIXELS = 1800 
+
+# NEW: File path for the static overview image
+OVERVIEW_MAP_FILE = "./data/official_seating_overview.jpg"
 
 # --- 2. DATA LOADING & IMAGE UTILITIES ---
 
@@ -56,14 +52,57 @@ def load_data(file_path, sheet_name):
 
 @st.cache_resource
 def load_map_image(file_path):
-    """Loads the base map image."""
+    """Loads the base map image and resizes it if too large.
+       Returns the image object and the scaling factor applied (1.0 if no resizing occurred)."""
     if not os.path.exists(file_path):
         st.error(f"Error: Map image file not found at '{file_path}'.")
-        return None
+        return None, 1.0
     try:
-        return Image.open(file_path).convert("RGB")
+        image = Image.open(file_path).convert("RGB")
+        original_width, original_height = image.size
+        
+        # Determine if resizing is necessary
+        if original_width > MAX_MAP_WIDTH_PIXELS:
+            # Calculate the new height to maintain aspect ratio
+            scaling_factor = MAX_MAP_WIDTH_PIXELS / original_width
+            new_height = int(original_height * scaling_factor)
+            
+            # Resize the image using the high-quality resampling filter
+            resized_image = image.resize((MAX_MAP_WIDTH_PIXELS, new_height), Image.Resampling.LANCZOS)
+            
+            # Return the resized image and the scaling factor
+            return resized_image, scaling_factor
+        
+        # If no resizing needed, scaling factor is 1.0
+        return image, 1.0
+        
     except Exception as e:
         st.error(f"Error loading map image: {e}")
+        return None, 1.0
+
+@st.cache_resource
+def load_overview_image(file_path):
+    """Loads the static overview map image and resizes it if too large."""
+    if not os.path.exists(file_path):
+        st.warning(f"Warning: Overview map file not found at '{file_path}'.")
+        return None
+    try:
+        image = Image.open(file_path).convert("RGB")
+        original_width, original_height = image.size
+        
+        # Determine if resizing is necessary using the same MAX_MAP_WIDTH_PIXELS
+        if original_width > MAX_MAP_WIDTH_PIXELS:
+            scaling_factor = MAX_MAP_WIDTH_PIXELS / original_width
+            new_height = int(original_height * scaling_factor)
+            
+            # Resize the image
+            resized_image = image.resize((MAX_MAP_WIDTH_PIXELS, new_height), Image.Resampling.LANCZOS)
+            return resized_image
+        
+        return image
+        
+    except Exception as e:
+        st.error(f"Error loading overview map image: {e}")
         return None
 
 @st.cache_data
@@ -84,7 +123,9 @@ def get_image_as_base64(image_obj):
     
     # Save the PIL Image to a bytes buffer
     buffered = BytesIO()
-    image_obj.save(buffered, format="PNG")
+    # Use JPEG format for the overview image to keep size down, but PNG for the detailed/marked map
+    format = "JPEG" if image_obj.format == "JPEG" else "PNG"
+    image_obj.save(buffered, format=format)
     
     # Encode the bytes to base64
     return base64.b64encode(buffered.getvalue()).decode()
@@ -97,8 +138,17 @@ MAP_FILE = "./data/floor_plan.png"
 
 # Call load_data and load_map_image
 guest_df = load_data(DATA_FILE, SHEET_NAME)
+
+# Load the main map (which returns the scale factor)
+base_map_and_scale = load_map_image(MAP_FILE)
+base_map = base_map_and_scale[0]
+MAP_SCALE_FACTOR = base_map_and_scale[1] # Store the scale factor
+
+# Load the overview map
+overview_map = load_overview_image(OVERVIEW_MAP_FILE)
+
 all_search_terms = get_search_terms(guest_df)
-base_map = load_map_image(MAP_FILE)
+
 
 # --- 3. UI SETUP ---
 
@@ -142,9 +192,10 @@ st.markdown(
     .scrollable-map {
         overflow-x: auto; /* Enable horizontal scrolling */
         overflow-y: auto; /* Enable vertical scrolling */
-        max-width: 100%; /* Limit container width to the column width */
+        width: 100%; /* CHANGED: Stretch to 100% of the column width */
         border: 1px solid #ddd; /* Optional: Add border for visual cue */
         border-radius: 8px;
+        margin-top: 15px;
     }
     /* Ensure the image inside the scrollable container does not shrink unnecessarily */
     .scrollable-map img {
@@ -262,24 +313,37 @@ if not final_match.empty:
     """
     # Display success message within the styled div
     st.markdown(
-        f'<div class="stSuccess">🎉<br>{success_content}<br>Enjoy the Luncheon!!</div>',
+        f'<div class="stSuccess">🎉 Here is your Info:<br>{success_content}<br>Enjoy our Wedding Luncheon!!</div>',
         unsafe_allow_html=True
     )
 
+    # NEW: Display the Overview Map (placed here, after info table and before detailed map)
+    if overview_map:
+        st.markdown("### General Seating Overview")
+        st.image(overview_map, caption="General Layout", use_container_width=True)
+
+
     # 5.3. Display Map with Marker (Scrollable version)
     if base_map and found_table in TABLE_COORDS:
-        st.markdown("### Location on Map (Scroll to View All):")
+        st.markdown("### Detailed Table Location (Scroll Left-right to View More):")
 
         # 1. Create a copy of the base map to draw on
         drawn_map = base_map.copy()
         draw = ImageDraw.Draw(drawn_map)
 
-        # 2. Get coordinates and draw the circle
-        x, y = TABLE_COORDS[found_table]
+        # 2. Get coordinates and apply scaling factor
+        original_x, original_y = TABLE_COORDS[found_table]
+        
+        # Scale coordinates based on image resizing
+        x = int(original_x * MAP_SCALE_FACTOR)
+        y = int(original_y * MAP_SCALE_FACTOR)
+        
+        # The circle radius should also scale to remain proportional
+        scaled_radius = int(CIRCLE_RADIUS * MAP_SCALE_FACTOR)
 
         # Draw a thick red circle marker
         draw.ellipse(
-            (x - CIRCLE_RADIUS, y - CIRCLE_RADIUS, x + CIRCLE_RADIUS, y + CIRCLE_RADIUS),
+            (x - scaled_radius, y - scaled_radius, x + scaled_radius, y + scaled_radius),
             outline='#FF0000', # Red color
             width=10
         )
@@ -312,9 +376,31 @@ if not final_match.empty:
 # 5.4. Handle Final Error
 elif final_search_query and final_match.empty and len(initial_matches) == 0:
     st.error("Guest name or relationship not found. Please try entering a different name or ask an usher for assistance.")
+    
+    # NEW: Display Overview Map here for failed searches
+    if overview_map:
+        st.markdown("### General Seating Overview")
+        st.image(overview_map, caption="General Layout", use_container_width=True)
+
+    # Display the static map if search fails (Scrollable version)
+    if base_map:
+        st.markdown("### Full Seating Plan (Scroll to View All)")
+        base64_image_data = get_image_as_base64(base_map)
+        if base64_image_data:
+             st.markdown(f"""
+            <div class="scrollable-map">
+                <img src="data:image/png;base64,{base64_image_data}" alt="Full Seating Map">
+            </div>
+            """, unsafe_allow_html=True)
 
 else:
-    # Display the static map if no search is active (Scrollable version)
+    # Display the static map if no search is active (Initial load)
+    
+    # NEW: Display Overview Map first for initial load
+    if overview_map:
+        st.markdown("### General Seating Overview")
+        st.image(overview_map, caption="General Layout", use_container_width=True)
+        
     if base_map:
         st.markdown("### Full Seating Plan (Scroll to View All)")
         base64_image_data = get_image_as_base64(base_map)
