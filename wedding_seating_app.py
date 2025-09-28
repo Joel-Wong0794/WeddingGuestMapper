@@ -192,15 +192,17 @@ st.markdown(
     .scrollable-map {
         overflow-x: auto; /* Enable horizontal scrolling */
         overflow-y: auto; /* Enable vertical scrolling */
-        width: 100%; /* CHANGED: Stretch to 100% of the column width */
+        max-height: 1400px; /* NEW: Set max height for the detailed map container */
+        width: 100%; /* Stretch to 100% of the column width */
         border: 1px solid #ddd; /* Optional: Add border for visual cue */
         border-radius: 8px;
         margin-top: 15px;
     }
-    /* Ensure the image inside the scrollable container does not shrink unnecessarily */
+    /* Ensure the image inside the scrollable container adapts its width */
     .scrollable-map img {
-        min-width: 100%; /* Ensure it takes full width if container allows */
-        max-width: none; /* Allow image to exceed container size */
+        min-width: 100%; 
+        width: auto; /* Allow image to use its natural width (up to MAX_MAP_WIDTH_PIXELS) */
+        max-width: none; /* Crucial: Allows scrolling if the image width > container width */
         height: auto;
         display: block;
     }
@@ -249,7 +251,7 @@ if final_search_query:
 
     # --- Step 1: Handle Multiple Matches (Group Selection) ---
     if len(initial_matches) > 1:
-        st.info(f"We found **{len(initial_matches)}** guests matching **'{final_search_query}'**. Please *select* your specific placard name:")
+        st.info(f"We found **{len(initial_matches)}** guests matching **'{final_search_query}'**. Please select your specific placard name:")
         
         # Create a unique identifier string that matches the selectbox option format
         initial_matches['UniqueSelection'] = initial_matches.apply(
@@ -313,20 +315,20 @@ if not final_match.empty:
     """
     # Display success message within the styled div
     st.markdown(
-        f'<div class="stSuccess">🎉 Here is your Info:<br>{success_content}<br>👰🏻🤵🏻Enjoy our Wedding Luncheon!!</div>',
+        f'<div class="stSuccess">🎉 Here Is Your Info:<br>{success_content}<br>👰🏻🤵🏻Enjoy our Wedding Luncheon!!</div>',
         unsafe_allow_html=True
     )
 
     # NEW: Display the Overview Map (placed here, after info table and before detailed map)
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", width='stretch')
+        st.image(overview_map, width='stretch')
 
 
     # 5.3. Display Map with Marker (Scrollable version)
     if base_map and found_table in TABLE_COORDS:
-        st.markdown("### Detailed Table Location (Scroll Left-right to View More):")
-
+        st.markdown("### Floor Plan (Scroll to View More)")
+        st.markdown("*Red Dot Indicates Your Table.*")
         # 1. Create a copy of the base map to draw on
         drawn_map = base_map.copy()
         draw = ImageDraw.Draw(drawn_map)
@@ -380,11 +382,12 @@ elif final_search_query and final_match.empty and len(initial_matches) == 0:
     # NEW: Display Overview Map here for failed searches
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", width='stretch')
+        st.image(overview_map, width='stretch')
 
     # Display the static map if search fails (Scrollable version)
     if base_map:
-        st.markdown("### Full Seating Plan (Scroll to View All)")
+        st.markdown("### Floor Plan (Scroll to View More)")
+        st.markdown("*Red Dot Indicates Your Table.*")
         base64_image_data = get_image_as_base64(base_map)
         if base64_image_data:
              st.markdown(f"""
@@ -399,10 +402,11 @@ else:
     # NEW: Display Overview Map first for initial load
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", width='stretch')
+        st.image(overview_map, width='stretch')
         
     if base_map:
-        st.markdown("### Full Seating Plan (Scroll to View All)")
+        st.markdown("### Floor Plan (Scroll to View More)")
+        st.markdown("*Red Dot Indicates Your Table.*")
         base64_image_data = get_image_as_base64(base_map)
         if base64_image_data:
              st.markdown(f"""
