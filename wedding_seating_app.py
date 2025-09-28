@@ -26,7 +26,7 @@ CIRCLE_RADIUS = 35
 MAX_MAP_WIDTH_PIXELS = 1800 
 
 # NEW: File path for the static overview image
-OVERVIEW_MAP_FILE = "./data/official_seating_overview.jpg"
+OVERVIEW_MAP_FILE = "./data/official_seating_overview.png"
 
 # --- 2. DATA LOADING & IMAGE UTILITIES ---
 
@@ -220,10 +220,10 @@ if guest_df.empty:
 
 # 4.1. Primary search input (Name or Relationship)
 search_selection = st.selectbox(
-    "Start typing your name or relationship to find your seat:",
+    "*Start typing your name or relationship to find your seat:*",
     options=[''] + all_search_terms, # Add an empty string for the initial prompt
     index=0,
-    placeholder="e.g., Jane Doe, Groom's Aunt, or VIP"
+    placeholder="e.g., Bride's Aunt, Groom's Family, Uncle, Friend"
 )
 
 final_search_query = search_selection if search_selection else None
@@ -249,7 +249,7 @@ if final_search_query:
 
     # --- Step 1: Handle Multiple Matches (Group Selection) ---
     if len(initial_matches) > 1:
-        st.info(f"We found **{len(initial_matches)}** guests matching **'{final_search_query}'**. Please select your specific placard name:")
+        st.info(f"We found **{len(initial_matches)}** guests matching **'{final_search_query}'**. Please *select* your specific placard name:")
         
         # Create a unique identifier string that matches the selectbox option format
         initial_matches['UniqueSelection'] = initial_matches.apply(
@@ -264,7 +264,7 @@ if final_search_query:
 
         # New selection box for the individual guest
         individual_selection = st.selectbox(
-            "Select your specific name:",
+            "*Select your specific name:*",
             options=selection_options,
             index=0
         )
@@ -313,14 +313,14 @@ if not final_match.empty:
     """
     # Display success message within the styled div
     st.markdown(
-        f'<div class="stSuccess">🎉 Here is your Info:<br>{success_content}<br>Enjoy our Wedding Luncheon!!</div>',
+        f'<div class="stSuccess">🎉 Here is your Info:<br>{success_content}<br>👰🏻🤵🏻Enjoy our Wedding Luncheon!!</div>',
         unsafe_allow_html=True
     )
 
     # NEW: Display the Overview Map (placed here, after info table and before detailed map)
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", use_container_width=True)
+        st.image(overview_map, caption="General Layout", width='stretch')
 
 
     # 5.3. Display Map with Marker (Scrollable version)
@@ -380,7 +380,7 @@ elif final_search_query and final_match.empty and len(initial_matches) == 0:
     # NEW: Display Overview Map here for failed searches
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", use_container_width=True)
+        st.image(overview_map, caption="General Layout", width='stretch')
 
     # Display the static map if search fails (Scrollable version)
     if base_map:
@@ -399,7 +399,7 @@ else:
     # NEW: Display Overview Map first for initial load
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, caption="General Layout", use_container_width=True)
+        st.image(overview_map, caption="General Layout", width='stretch')
         
     if base_map:
         st.markdown("### Full Seating Plan (Scroll to View All)")
