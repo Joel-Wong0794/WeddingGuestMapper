@@ -10,14 +10,14 @@ from io import BytesIO
 # The application will automatically scale these coordinates if the map is resized below.
 
 TABLE_COORDS = {
-    'VIP': (6250, 1820),
-    '1': (7200, 1820),
-    '2': (5065, 1820),
-    '3': (4115, 2000),
-    '4': (3650, 4100),
-    '5': (2705, 4100),
-    '6': (1750, 4100),
-    '7': (800, 4100)
+    'VIP': (6230, 1820),
+    '1': (7180, 1820),
+    '2': (5045, 1820),
+    '3': (4100, 2000),
+    '4': (3630, 4100),
+    '5': (2685, 4100),
+    '6': (1730, 4100),
+    '7': (780, 4100)
 }
 # Size of the circle to draw (adjust radius if needed)
 CIRCLE_RADIUS = 35
