@@ -26,7 +26,7 @@ CIRCLE_RADIUS = 35
 MAX_MAP_WIDTH_PIXELS = 1800 
 
 # NEW: File path for the static overview image
-OVERVIEW_MAP_FILE = "./data/official_seating_overview.png"
+OVERVIEW_MAP_FILE = "./data/official_seating_overview.jpg"
 
 # --- 2. DATA LOADING & IMAGE UTILITIES ---
 
