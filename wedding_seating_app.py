@@ -322,7 +322,7 @@ if not final_match.empty:
     # NEW: Display the Overview Map (placed here, after info table and before detailed map)
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, width='stretch')
+        st.image(overview_map, width='stretch',output_format='auto')
 
 
     # 5.3. Display Map with Marker (Scrollable version)
@@ -382,7 +382,7 @@ elif final_search_query and final_match.empty and len(initial_matches) == 0:
     # NEW: Display Overview Map here for failed searches
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, width='stretch')
+        st.image(overview_map, width='stretch',output_format='auto')
 
     # Display the static map if search fails (Scrollable version)
     if base_map:
@@ -402,7 +402,7 @@ else:
     # NEW: Display Overview Map first for initial load
     if overview_map:
         st.markdown("### General Seating Overview")
-        st.image(overview_map, width='stretch')
+        st.image(overview_map, width='stretch',output_format='auto')
         
     if base_map:
         st.markdown("### Floor Plan (Scroll to View More)")
